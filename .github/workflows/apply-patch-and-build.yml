@@ -1,0 +1,72 @@
+name: Apply Patch and Build on Windows
+
+on:
+  workflow_dispatch: # Запуск вручную
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      # Шаг 0: Настройка Node.js (версия 20)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Устанавливаем Node.js версии 20
+
+      # Шаг 1: Кэширование зависимостей Node.js
+      - name: Cache Node.js modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            vscode-source/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      # Шаг 2: Клонируем ваш репозиторий
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Шаг 3: Клонируем оригинальный VSCode репозиторий (с указанным коммитом)
+      - name: Clone original VSCode repository
+        run: |
+          git clone --depth=1 --branch=main https://github.com/microsoft/vscode.git vscode-source
+
+      # Шаг 4: Копируем патч в оригинальный репозиторий
+      - name: Copy patch into cloned repository
+        run: |
+          copy ts-compile-on-save.patch vscode-source\
+
+      # Шаг 5: Применяем патч
+      - name: Apply patch
+        run: |
+          cd vscode-source
+          git apply ../ts-compile-on-save.patch
+
+      # Шаг 6: Устанавливаем зависимости
+      - name: Install dependencies
+        run: |
+          cd vscode-source
+          npm install
+
+      # Шаг 7: Сборка проекта
+      - name: Build VSCode
+        run: |
+          cd vscode-source
+          npm run compile-extensions-build
+          
+      # Добавляем просмотр содержимого перед загрузкой
+      - name: List artifact contents
+        run: |
+          echo "Contents of out directory:"
+          dir vscode-source\.build\extensions
+          echo "Contents of out directory:"
+          dir vscode-source
+
+      # (Опционально) Шаг 8: Сохранение результата сборки
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-language-features
+          path: vscode-source/.build/extensions/typescript-language-features/dist/
