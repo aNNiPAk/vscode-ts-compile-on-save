@@ -1,0 +1,43 @@
+diff --git a/extensions/typescript-language-features/src/tsServer/bufferSyncSupport.ts b/extensions/typescript-language-features/src/tsServer/bufferSyncSupport.ts
+index 56d2896fa3..8f327b83e3 100644
+--- a/extensions/typescript-language-features/src/tsServer/bufferSyncSupport.ts
++++ b/extensions/typescript-language-features/src/tsServer/bufferSyncSupport.ts
+@@ -224,6 +224,13 @@ class SyncedBuffer {
+ 		return this.synchronizer.close(this.resource, this.filepath, mode2ScriptKind(this.document.languageId));
+ 	}
+ 
++	// С.Г.
++	public save(): void {
++		if (this.languageId != "typescript") return; // С.Л.
++		// @ts-ignore
++		this.client.execute("compileOnSaveEmitFile", { file: this.filepath }, false);
++	}
++
+ 	public onContentChanged(events: readonly vscode.TextDocumentContentChangeEvent[]): void {
+ 		if (this.state !== BufferState.Open) {
+ 			console.error(`Unexpected buffer state: ${this.state}`);
+@@ -518,6 +525,7 @@ export default class BufferSyncSupport extends Disposable {
+ 		vscode.workspace.onDidOpenTextDocument(this.openTextDocument, this, this._disposables);
+ 		vscode.workspace.onDidCloseTextDocument(this.onDidCloseTextDocument, this, this._disposables);
+ 		vscode.workspace.onDidChangeTextDocument(this.onDidChangeTextDocument, this, this._disposables);
++		vscode.workspace.onDidSaveTextDocument(this.onDidSaveTextDocument, this, this._disposables);
+ 		vscode.window.onDidChangeVisibleTextEditors(e => {
+ 			for (const { document } of e) {
+ 				const syncedBuffer = this.syncedBuffers.get(document.uri);
+@@ -659,6 +667,16 @@ export default class BufferSyncSupport extends Disposable {
+ 		}
+ 	}
+ 
++	// С.Л.
++	private onDidSaveTextDocument(document: vscode.TextDocument) {
++		const resource = document.uri;
++		const syncedBuffer = this.syncedBuffers.get(resource);
++		if (!syncedBuffer) return;
++		// С.Г.
++		//if (this.client.apiVersion.gte(api_1.default.v206))
++		syncedBuffer.save(); // С.Г.
++	}
++
+ 	public requestAllDiagnostics() {
+ 		for (const buffer of this.syncedBuffers.allBuffers) {
+ 			if (this.shouldValidate(buffer)) {
