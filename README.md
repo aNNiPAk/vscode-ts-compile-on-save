@@ -1,0 +1,1 @@
+# vscode-ts-compile-on-save
