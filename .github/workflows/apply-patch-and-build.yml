@@ -8,11 +8,17 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Шаг 0: Настройка Node.js (версия 20)
+      # Настройка Node.js (версия 20)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20' # Устанавливаем Node.js версии 20
+      
+      # Включаем поддержку длинных путей в Git ДО любых clone/checkout
+      - name: Enable long paths in Git
+        run: |
+          git config --global core.longpaths true
+          git config --global --get core.longpaths
 
       # Шаг 1: Кэширование зависимостей Node.js
       - name: Cache Node.js modules
@@ -31,7 +37,7 @@ jobs:
       # Шаг 3: Клонируем оригинальный VSCode репозиторий (с указанным коммитом)
       - name: Clone original VSCode repository
         run: |
-          git clone --depth=1 --branch=main https://github.com/microsoft/vscode.git vscode-source
+          git -c core.longpaths=true clone --depth=1 --branch=main https://github.com/microsoft/vscode.git vscode-source
 
       # Шаг 4: Копируем патч в оригинальный репозиторий
       - name: Copy patch into cloned repository
@@ -70,3 +76,4 @@ jobs:
         with:
           name: typescript-language-features
           path: vscode-source/.build/extensions/typescript-language-features/dist/
+
