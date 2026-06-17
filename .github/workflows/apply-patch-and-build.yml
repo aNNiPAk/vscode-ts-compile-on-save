@@ -8,42 +8,39 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Включаем поддержку длинных путей в Git ДО любых clone/checkout
       - name: Enable long paths in Git
         run: |
           git config --global core.longpaths true
           git config --global --get core.longpaths
 
-      # Шаг 1: Клонируем ваш репозиторий
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Шаг 2: Клонируем оригинальный VSCode репозиторий
       - name: Clone original VSCode repository
         run: |
           git -c core.longpaths=true clone --depth=1 --branch=main https://github.com/microsoft/vscode.git vscode-source
 
-      # Шаг 3: Настройка Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: vscode-source/.nvmrc
           cache: npm
-          cache-dependency-path: vscode-source/package-lock.json
+          cache-dependency-path: |
+            vscode-source/package-lock.json
+            vscode-source/build/package-lock.json
+            vscode-source/extensions/package-lock.json
+            vscode-source/extensions/typescript-language-features/package-lock.json
 
-      # Шаг 4: Копируем патч в оригинальный репозиторий
       - name: Copy patch into cloned repository
         run: |
           copy ts-compile-on-save.patch vscode-source\
 
-      # Шаг 5: Применяем патч
       - name: Apply patch
         run: |
           cd vscode-source
-          git apply ../ts-compile-on-save.patch
+          git apply ts-compile-on-save.patch
 
-      # Шаг 6: Устанавливаем только зависимости, нужные для точечной сборки
-      - name: Install dependencies for TypeScript extension build
+      - name: Install required dependencies
         run: |
           cd vscode-source
 
@@ -56,27 +53,44 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
 
-      # Шаг 7: Собираем только TypeScript language features
-      - name: Build TypeScript language features only
+      - name: Restrict extension build to TypeScript language features
+        shell: pwsh
+        run: |
+          $file = "vscode-source/build/lib/extensions.ts"
+          $text = Get-Content $file -Raw
+
+          $needle = ".filter(({ name }) => native ? nativeExtensionsSet.has(name) : !nativeExtensionsSet.has(name))"
+          $replacement = ".filter(({ name }) => name === 'typescript-language-features')`r`n`t`t`t.filter(({ name }) => native ? nativeExtensionsSet.has(name) : !nativeExtensionsSet.has(name))"
+
+          if ($text -notlike "*name === 'typescript-language-features'*") {
+            $text = $text.Replace($needle, $replacement)
+            Set-Content $file $text -NoNewline
+          }
+
+          git -C vscode-source diff -- build/lib/extensions.ts
+
+      - name: Build TypeScript language features dist
         run: |
           cd vscode-source
-          npm run gulp -- --gulpfile ./build/gulpfile.extensions.ts compile-extension:typescript-language-features
+          npm run compile-extensions-build
         env:
           VSCODE_GITHUB_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
 
-      # Проверяем результат
       - name: List artifact contents
         run: |
-          echo "Contents of TypeScript extension out directory:"
-          dir vscode-source\extensions\typescript-language-features\out
-          echo "Contents of tsServer directory:"
-          dir vscode-source\extensions\typescript-language-features\out\tsServer
+          echo "Contents of .build/extensions:"
+          dir vscode-source\.build\extensions
 
-      # Сохраняем результат
+          echo "Contents of TypeScript language features:"
+          dir vscode-source\.build\extensions\typescript-language-features
+
+          echo "Contents of dist:"
+          dir vscode-source\.build\extensions\typescript-language-features\dist
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: typescript-language-features-out
-          path: vscode-source/extensions/typescript-language-features/out/
+          name: typescript-language-features-dist
+          path: vscode-source/.build/extensions/typescript-language-features/dist/
