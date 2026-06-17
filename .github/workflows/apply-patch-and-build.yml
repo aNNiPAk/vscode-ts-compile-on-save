@@ -42,17 +42,20 @@ jobs:
           cd vscode-source
           git apply ../ts-compile-on-save.patch
 
-      # Шаг 6: Устанавливаем зависимости — оставить как в рабочем варианте
-      - name: Install dependencies
+      # Шаг 6: Устанавливаем только зависимости, нужные для точечной сборки
+      - name: Install dependencies for TypeScript extension build
         run: |
           cd vscode-source
-          npm install
+
+          npm ci --ignore-scripts --no-audit --fund=false
+          npm --prefix build ci --ignore-scripts --no-audit --fund=false
+          npm --prefix extensions/typescript-language-features ci --ignore-scripts --no-audit --fund=false
         env:
           VSCODE_GITHUB_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
 
-      # Шаг 7: Собираем только нужное встроенное расширение
+      # Шаг 7: Собираем только TypeScript language features
       - name: Build TypeScript language features only
         run: |
           cd vscode-source\extensions\typescript-language-features
@@ -62,7 +65,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
 
-      # Проверяем результат точечной сборки
+      # Проверяем результат
       - name: List artifact contents
         run: |
           echo "Contents of TypeScript extension out directory:"
@@ -70,7 +73,7 @@ jobs:
           echo "Contents of tsServer directory:"
           dir vscode-source\extensions\typescript-language-features\out\tsServer
 
-      # Сохраняем результат точечной сборки
+      # Сохраняем результат
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
