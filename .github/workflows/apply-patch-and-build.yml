@@ -46,13 +46,12 @@ jobs:
       - name: Install dependencies
         run: |
           cd vscode-source
-          npm install
+          npm ci
 
-      # Шаг 7: Сборка проекта
-      - name: Build VSCode
+      - name: Compile only TypeScript language features extension
         run: |
-          cd vscode-source
-          npm run compile-extensions-build
+          cd vscode-source\extensions\typescript-language-features
+          npm run vscode:prepublish
         env:
           VSCODE_GITHUB_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
