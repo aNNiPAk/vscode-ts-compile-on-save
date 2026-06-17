@@ -29,7 +29,10 @@ jobs:
         with:
           node-version-file: vscode-source/.nvmrc
           cache: npm
-          cache-dependency-path: vscode-source/package-lock.json
+          cache-dependency-path: |
+            vscode-source/package-lock.json
+            vscode-source/build/package-lock.json
+            vscode-source/extensions/typescript-language-features/package-lock.json
 
       # Шаг 4: Копируем патч в оригинальный репозиторий
       - name: Copy patch into cloned repository
@@ -42,11 +45,23 @@ jobs:
           cd vscode-source
           git apply ../ts-compile-on-save.patch
 
-      # Шаг 6: Устанавливаем зависимости
-      - name: Install dependencies
+      - name: Apply patch
         run: |
           cd vscode-source
-          npm ci
+          git apply ts-compile-on-save.patch
+
+      - name: Install only required dependencies
+        run: |
+          cd vscode-source
+
+          npm ci --ignore-scripts --no-audit --fund=false
+          npm --prefix build ci --ignore-scripts --no-audit --fund=false
+          npm --prefix extensions/typescript-language-features ci --ignore-scripts --no-audit --fund=false
+        env:
+          VSCODE_GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          npm_config_foreground_scripts: "true"
 
       - name: Compile only TypeScript language features extension
         run: |
@@ -56,21 +71,24 @@ jobs:
           VSCODE_GITHUB_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
-          
-      # Добавляем просмотр содержимого перед загрузкой
+
       - name: List artifact contents
         run: |
-          echo "Contents of out directory:"
-          dir vscode-source\.build\extensions
-          echo "Contents of out directory:"
-          dir vscode-source
+          echo "Compiled extension out directory:"
+          dir vscode-source\extensions\typescript-language-features\out
+          echo "Compiled tsServer directory:"
+          dir vscode-source\extensions\typescript-language-features\out\tsServer
 
-      # (Опционально) Шаг 8: Сохранение результата сборки
-      - name: Upload build artifacts
+      - name: Upload patched runtime files
         uses: actions/upload-artifact@v4
         with:
-          name: typescript-language-features
-          path: vscode-source/.build/extensions/typescript-language-features/dist/
+          name: patched-bufferSyncSupport
+          path: |
+            vscode-source/extensions/typescript-language-features/out/tsServer/bufferSyncSupport.js
+            vscode-source/extensions/typescript-language-features/out/tsServer/bufferSyncSupport.js.map
 
-
-
+      - name: Upload full patched extension out directory
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-language-features-out
+          path: vscode-source/extensions/typescript-language-features/out/
