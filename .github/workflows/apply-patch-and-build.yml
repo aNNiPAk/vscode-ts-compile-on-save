@@ -18,21 +18,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Шаг 2: Клонируем оригинальный VSCode репозиторий (с указанным коммитом)
+      # Шаг 2: Клонируем оригинальный VSCode репозиторий
       - name: Clone original VSCode repository
         run: |
           git -c core.longpaths=true clone --depth=1 --branch=main https://github.com/microsoft/vscode.git vscode-source
 
-      # Шаг 3: Кэширование зависимостей Node.js
+      # Шаг 3: Настройка Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: vscode-source/.nvmrc
           cache: npm
-          cache-dependency-path: |
-            vscode-source/package-lock.json
-            vscode-source/build/package-lock.json
-            vscode-source/extensions/typescript-language-features/package-lock.json
+          cache-dependency-path: vscode-source/package-lock.json
 
       # Шаг 4: Копируем патч в оригинальный репозиторий
       - name: Copy patch into cloned repository
@@ -45,25 +42,18 @@ jobs:
           cd vscode-source
           git apply ../ts-compile-on-save.patch
 
-      - name: Apply patch
+      # Шаг 6: Устанавливаем зависимости — оставить как в рабочем варианте
+      - name: Install dependencies
         run: |
           cd vscode-source
-          git apply ts-compile-on-save.patch
-
-      - name: Install only required dependencies
-        run: |
-          cd vscode-source
-
-          npm ci --ignore-scripts --no-audit --fund=false
-          npm --prefix build ci --ignore-scripts --no-audit --fund=false
-          npm --prefix extensions/typescript-language-features ci --ignore-scripts --no-audit --fund=false
+          npm install
         env:
           VSCODE_GITHUB_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
-          npm_config_foreground_scripts: "true"
 
-      - name: Compile only TypeScript language features extension
+      # Шаг 7: Собираем только нужное встроенное расширение
+      - name: Build TypeScript language features only
         run: |
           cd vscode-source\extensions\typescript-language-features
           npm run vscode:prepublish
@@ -72,22 +62,16 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
 
+      # Проверяем результат точечной сборки
       - name: List artifact contents
         run: |
-          echo "Compiled extension out directory:"
+          echo "Contents of TypeScript extension out directory:"
           dir vscode-source\extensions\typescript-language-features\out
-          echo "Compiled tsServer directory:"
+          echo "Contents of tsServer directory:"
           dir vscode-source\extensions\typescript-language-features\out\tsServer
 
-      - name: Upload patched runtime files
-        uses: actions/upload-artifact@v4
-        with:
-          name: patched-bufferSyncSupport
-          path: |
-            vscode-source/extensions/typescript-language-features/out/tsServer/bufferSyncSupport.js
-            vscode-source/extensions/typescript-language-features/out/tsServer/bufferSyncSupport.js.map
-
-      - name: Upload full patched extension out directory
+      # Сохраняем результат точечной сборки
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: typescript-language-features-out
