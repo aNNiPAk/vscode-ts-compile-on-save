@@ -49,6 +49,7 @@ jobs:
 
           npm ci --ignore-scripts --no-audit --fund=false
           npm --prefix build ci --ignore-scripts --no-audit --fund=false
+          npm --prefix extensions ci --no-audit --fund=false
           npm --prefix extensions/typescript-language-features ci --ignore-scripts --no-audit --fund=false
         env:
           VSCODE_GITHUB_TOKEN: ${{ github.token }}
