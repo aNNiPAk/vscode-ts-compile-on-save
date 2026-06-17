@@ -58,8 +58,8 @@ jobs:
       # Шаг 7: Собираем только TypeScript language features
       - name: Build TypeScript language features only
         run: |
-          cd vscode-source\extensions\typescript-language-features
-          npm run vscode:prepublish
+          cd vscode-source
+          npm run gulp -- --gulpfile ./build/gulpfile.extensions.ts compile-extension:typescript-language-features
         env:
           VSCODE_GITHUB_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
