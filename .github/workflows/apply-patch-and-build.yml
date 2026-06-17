@@ -24,20 +24,12 @@ jobs:
           git -c core.longpaths=true clone --depth=1 --branch=main https://github.com/microsoft/vscode.git vscode-source
 
       # Шаг 3: Кэширование зависимостей Node.js
-      - name: Cache Node.js modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            vscode-source/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-
-      # Настройка Node.js (версия 20)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24.15.0' # Устанавливаем Node.js версии 20
+          node-version-file: vscode-source/.nvmrc
+          cache: npm
+          cache-dependency-path: vscode-source/package-lock.json
 
       # Шаг 4: Копируем патч в оригинальный репозиторий
       - name: Copy patch into cloned repository
