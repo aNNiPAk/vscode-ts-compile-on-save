@@ -24,12 +24,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: vscode-source/.nvmrc
-          cache: npm
-          cache-dependency-path: |
-            vscode-source/package-lock.json
-            vscode-source/build/package-lock.json
-            vscode-source/extensions/package-lock.json
-            vscode-source/extensions/typescript-language-features/package-lock.json
+          cache: pnpm
+          cache-dependency-path: vscode-source/pnpm-lock.yaml
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.16.0
+
+      - name: Install required dependencies
+        working-directory: vscode-source
+        run: pnpm install --frozen-lockfile
+        env:
+          VSCODE_GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
 
       - name: Copy patch into cloned repository
         run: |
@@ -39,19 +48,6 @@ jobs:
         run: |
           cd vscode-source
           git apply ts-compile-on-save.patch
-
-      - name: Install required dependencies
-        run: |
-          cd vscode-source
-
-          npm ci --ignore-scripts --no-audit --fund=false
-          npm --prefix build ci --ignore-scripts --no-audit --fund=false
-          npm --prefix extensions ci --no-audit --fund=false
-          npm --prefix extensions/typescript-language-features ci --ignore-scripts --no-audit --fund=false
-        env:
-          VSCODE_GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_TOKEN: ${{ github.token }}
-          GH_TOKEN: ${{ github.token }}
 
       - name: Restrict extension build to TypeScript language features
         shell: pwsh
