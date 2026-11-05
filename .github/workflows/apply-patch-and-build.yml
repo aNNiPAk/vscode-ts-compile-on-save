@@ -20,17 +20,17 @@ jobs:
         run: |
           git -c core.longpaths=true clone --depth=1 --branch=main https://github.com/microsoft/vscode.git vscode-source
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.16.0
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: vscode-source/.nvmrc
           cache: pnpm
           cache-dependency-path: vscode-source/pnpm-lock.yaml
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 12.16.0
 
       - name: Install required dependencies
         working-directory: vscode-source
