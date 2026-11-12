@@ -12,7 +12,6 @@ jobs:
       - name: Enable long paths in Git
         run: |
           git config --global core.longpaths true
-          git config --global --get core.longpaths
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,6 +19,12 @@ jobs:
       - name: Clone original VSCode repository
         run: |
           git -c core.longpaths=true clone --depth=1 --branch=main https://github.com/microsoft/vscode.git D:\v
+
+      - name: Prepare Node.js and pnpm metadata
+        shell: pwsh
+        run: |
+          Copy-Item "D:\v\.nvmrc" "$env:GITHUB_WORKSPACE\.nvmrc"
+          Copy-Item "D:\v\pnpm-lock.yaml" "$env:GITHUB_WORKSPACE\pnpm-lock.yaml"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -29,9 +34,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: D:\v\.nvmrc
+          node-version-file: .nvmrc
           cache: pnpm
-          cache-dependency-path: D:\v\pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install required dependencies
         working-directory: D:\v
